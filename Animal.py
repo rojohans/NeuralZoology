@@ -5,32 +5,6 @@
 import numpy as np
 from scipy import spatial
 
-'''
-class KatarinaAnimalClass():
-    def __init__(self,
-                 x=None,
-                 y=None,):
-        if x:
-            self.x = x
-        else:
-            self.x = self.mapSize * np.random.rand()
-        if y:
-            self.y = y
-        else:
-            self.y = self.mapSize * np.random.rand()
-
-
-    def PrintStats(self):
-        print('x = ',self.x)
-        print('y = ',self.y)
-
-
-    @classmethod
-    def InitializeGlobalParameters(cls, mapSize):
-        cls.mapSize = mapSize
-'''
-
-
 
 
 

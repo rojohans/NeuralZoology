@@ -5,7 +5,7 @@
 import Animal
 import numpy as np
 
-
+#.
 class PreyClass(Animal.AnimalClass):
     def __init__(self,
                  x = None,
