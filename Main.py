@@ -21,7 +21,7 @@ numberOfTraceValues = 4 # The number of previous positions stored and visualized
 printStatsTOGGLE = False
 
 visionArcPrey = 120*np.pi/180
-#visionRangePrey()
+visionRangePrey = 15
 
 # ====================== PLOT SETUP ===============================
 mainFigure = plt.figure()
