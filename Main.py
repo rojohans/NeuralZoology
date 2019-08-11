@@ -14,26 +14,36 @@ import Prey
 # ==================== PARAMETER SETUP ============================
 MAPSIZE = 100
 TIMETICK = 1
-numberOfInitialPrey = 50
+numberOfInitialPrey = 1000
 maxSpeed = 5
 numberOfAnimationSteps = 500
 numberOfTraceValues = 4 # The number of previous positions stored and visualized.
 printStatsTOGGLE = False
 
+visionArcPrey = 120*np.pi/180
+#visionRangePrey()
 
 # ====================== PLOT SETUP ===============================
+mainFigure = plt.figure()
+mainAxes = plt.axes()
 preyPlotHandle = plt.plot(0, 0, marker = '.', linestyle = 'none')
 preyLineHandle = plt.plot(0, 0, marker = None, linestyle = '-')
 plt.axis([0, MAPSIZE, 0, MAPSIZE])
+mainAxes.set_aspect('equal')
 
 
 # ====================== ANIMAL SETUP =============================
-Animal.AnimalClass.InitializeGlobalParameters(mapSize = MAPSIZE, timeTick = TIMETICK)
+Animal.AnimalClass.InitializeGlobalParameters(mapSize = MAPSIZE,
+                                              timeTick = TIMETICK,
+                                              visionArc=110,
+                                              visionRange=15,
+                                              numberOfRangeValues=5)
 preyList = [Prey.PreyClass(acceleration=0, maxSpeed = maxSpeed, speed = 1) for i in range(numberOfInitialPrey)]
 if printStatsTOGGLE:
     for prey in preyList:
         prey.PrintStats()
         print('--------------')
+Prey.PreyClass.LinkLists(preyList)
 
 
 randomPoints = [(100*np.random.rand(), 100*np.random.rand())for i in range(1000000)]
@@ -41,12 +51,14 @@ specificPoint = (30, 30)
 
 from scipy import spatial
 
+
+'''
 pr = cProfile.Profile()
 pr.enable()
 
 tic = time.clock()
 
-'''
+
 shortestDistance = None
 closestIndex = None
 
@@ -96,11 +108,11 @@ ax.add_collection(lc)
 
 
 
-
+'''
 # The vision nodes are created.
 angleSpan = 110*np.pi/180
 rangeSpan = 15
-numberOfRangeValues = 3
+numberOfRangeValues = 6
 
 # The rangeDistribution is calculated in order to distribute the vision nodes such that they are uniformly spaced.
 rangeVector = np.linspace(rangeSpan/numberOfRangeValues, rangeSpan, numberOfRangeValues)
@@ -112,39 +124,85 @@ visionNodesTemplate = [[range*np.cos(angle), range*np.sin(angle)]
                        for angle in np.linspace(-angleSpan/2, angleSpan/2, rangeDistribution[iRange])]
 visionNodesArrayTemplate=np.array(visionNodesTemplate)
 
+rotationAngle = 60*np.pi/180
+rotationMatrix = np.array([[np.cos(rotationAngle), -np.sin(rotationAngle)], [np.sin(rotationAngle), np.cos(rotationAngle)]])
+
+
+x = visionNodesArrayTemplate.transpose()
+y = rotationMatrix.dot(x)
+visionNodesArrayTemplate = y.transpose()
 
 
 visionNodesArrayTemplate[:, 0] += preyList[0].x
 visionNodesArrayTemplate[:, 1] += preyList[0].y
-#print(visionNodesArrayTemplate)
+visionNodesArrayTemplate = (visionNodesArrayTemplate + MAPSIZE) % MAPSIZE
+
 
 preyCoordinates = [[prey.x, prey.y]for prey in preyList]
 
 tree = spatial.cKDTree(preyCoordinates)
 queryResult = tree.query(visionNodesArrayTemplate)
-print(np.shape(queryResult))
-print(queryResult)
-#print(queryResult[0][:])
-#print(queryResult[0][:] < visionTolerance)
-#print(queryResult[1][:] != 0)
 
-print(queryResult[0])
 logic1 = queryResult[0] < visionTolerance
 logic2 = queryResult[1] != 0
 logic3 = logic1 & logic2
-
-print(logic1)
-print(logic2)
-print(logic3)
-
 visionNodes = logic3.astype(int)
-print(visionNodes)
+'''
 
-
+'''
+# =======================================
+# ---------------------------------------
+# .......................................
+Prey.PreyClass.updateCoordinateList()
+[visionNodesArrayTemplate, visionNodes] = preyList[0].Look(0)
+# .......................................
+# ---------------------------------------
+# =======================================
 
 plt.plot(preyList[0].x, preyList[0].y)
 #plt.plot(visionNodesArrayTemplate[:, 0], visionNodesArrayTemplate[:, 1], marker='.', linestyle='none')
-plt.plot(visionNodesArrayTemplate[:, 0], visionNodesArrayTemplate[:, 1], marker = '.', c = 200*visionNodes, linestyle='none')
+plt.scatter(visionNodesArrayTemplate[:, 0], visionNodesArrayTemplate[:, 1], c = visionNodes)
+#plt.plot(visionNodesArrayTemplate[:, 0], visionNodesArrayTemplate[:, 1], marker = '.', c = 200*visionNodes, linestyle='none')
+'''
+
+pr = cProfile.Profile()
+pr.enable()
+tic = time.clock()
+
+Prey.PreyClass.updateCoordinateList()
+for iPrey, prey in enumerate(preyList):
+    [visionNodesArrayTemplate, visionNodes] = prey.Look(iPrey)
+
+toc = time.clock()
+print(toc-tic)
+pr.disable()
+pr.print_stats(2)
+quit()
+
+
+preyX = []
+preyY = []
+for prey in preyList:
+    preyX.append(prey.x)
+    preyY.append(prey.y)
+#plt.plot(preyX, preyY, marker = '.', linestyle = 'none')
+
+
+
+Prey.PreyClass.updateCoordinateList()
+for iPrey, prey in enumerate(preyList):
+    [visionNodesArrayTemplate, visionNodes] = prey.Look(iPrey)
+    plt.plot(preyX, preyY, marker='.', linestyle='none')
+    #plt.plot(prey.x, prey.y)
+    plt.scatter(visionNodesArrayTemplate[:, 0], visionNodesArrayTemplate[:, 1], c=visionNodes)
+    plt.axis([0, MAPSIZE, 0, MAPSIZE])
+    plt.pause(0.000001)
+    plt.cla()
+
+quit()
+
+
+
 plt.show()
 
 quit()

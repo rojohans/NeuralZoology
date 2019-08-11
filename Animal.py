@@ -3,8 +3,9 @@
 #
 
 import numpy as np
+from scipy import spatial
 
-
+'''
 class KatarinaAnimalClass():
     def __init__(self,
                  x=None,
@@ -27,7 +28,7 @@ class KatarinaAnimalClass():
     @classmethod
     def InitializeGlobalParameters(cls, mapSize):
         cls.mapSize = mapSize
-
+'''
 
 
 
@@ -58,6 +59,8 @@ class AnimalClass():
         #
         # hasWrapped: Determines if either the x- or y-coordinate has wrapped around. This is usefull to know when
         #             visualizing traces.
+        # visionArc: The angle in which the animal can see.
+        # visionRange: The maximum distance at which detection can be done.
         #
         #
         if x == None:
@@ -94,6 +97,30 @@ class AnimalClass():
         #visionRange = 40
         #visionArc = 110
 
+    def Look(self, ID):
+        #self.directionAngle
+
+        rotationMatrix = np.array([[np.cos(self.directionAngle),
+                                    -np.sin(self.directionAngle)],
+                                   [np.sin(self.directionAngle),
+                                    np.cos(self.directionAngle)]])
+
+        visionNodesCoordinates = rotationMatrix.dot(self.visionNodesTemplate.transpose())
+        visionNodesCoordinates = visionNodesCoordinates.transpose()
+        visionNodesCoordinates[:, 0] += self.x
+        visionNodesCoordinates[:, 1] += self.y
+        visionNodesCoordinates = (visionNodesCoordinates + self.mapSize) % self.mapSize
+
+        queryResult = self.preykdTree.query(visionNodesCoordinates)
+
+        logic1 = queryResult[0] < self.visionTolerance
+        logic2 = queryResult[1] != ID
+        logic3 = logic1 & logic2
+        visionNodesInput = logic3.astype(int)
+
+        return visionNodesCoordinates, visionNodesInput
+
+
     def Move(self):
         self.hasWrapped = False
         self.x += self.timeTick * self.speed * np.cos(self.directionAngle)
@@ -107,11 +134,38 @@ class AnimalClass():
 
 
     @classmethod
-    def InitializeGlobalParameters(cls, mapSize = 100, timeTick = 1):
+    def InitializeGlobalParameters(cls,
+                                   mapSize = 100,
+                                   timeTick = 1,
+                                   visionArc = 120*np.pi/180,
+                                   visionRange = 15,
+                                   numberOfRangeValues = 5):
         # mapSize: The scale of the world. xLim = [0, mapSize], yLim = [0, mapSize]
         # timeTick: The time between each action. A smaller value would mean smaller but more precise value adjustments.
         cls.mapSize = mapSize
         cls.timeTick = timeTick
+
+        rangeVector = np.linspace(visionRange / numberOfRangeValues, visionRange, numberOfRangeValues)
+        rangeDistribution = np.round(2 * rangeVector / np.min(rangeVector))
+        cls.visionTolerance = rangeVector[-1] * visionArc / rangeDistribution[-1]
+        visionNodesTemplate = [[range * np.cos(angle), range * np.sin(angle)]
+                               for iRange, range in enumerate(rangeVector)
+                               for angle in np.linspace(-visionArc / 2, visionArc / 2, rangeDistribution[iRange])]
+        cls.visionNodesTemplate = np.array(visionNodesTemplate)
+
+    @classmethod
+    def LinkLists(cls, preyList):
+        # The kd-Tree is created in order to quickly find the nearest objects to a set of vision nodes.
+        cls.preyList = preyList
+        cls.preyCoordinates = [[prey.x, prey.y] for prey in preyList]
+        cls.preykdTree = spatial.cKDTree(cls.preyCoordinates)
+
+    @classmethod
+    def updateCoordinateList(cls):
+        for iPrey, prey in enumerate(cls.preyList):
+            cls.preyCoordinates[iPrey][0] = prey.x
+            cls.preyCoordinates[iPrey][1] = prey.y
+            cls.preykdTree = spatial.cKDTree(cls.preyCoordinates)
 
 
     @property
@@ -136,8 +190,5 @@ class AnimalClass():
 
     def _Periodic(self, value):
         return (value + self.mapSize) % self.mapSize
-
-
-
 
 
